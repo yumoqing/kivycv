@@ -5,7 +5,7 @@ import wave
 from kivy.event import EventDispatcher
 from kivy.properties import NumericProperty
 from kivyblocks.baseWidget import HBox
-from kviyblocks.micphone import Micphone
+from kviycv.micphone import Micphone
 
 class AudioRecorder(EventDispatcher):
 	fs = NumericProperty(None)
