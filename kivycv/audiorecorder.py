@@ -3,14 +3,14 @@ import tempfile
 import pyaudio
 import wave
 from kivy.event import EventDispatcher
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty
 from kivyblocks.baseWidget import HBox
-from kviycv.micphone import Micphone
+from kivycv.micphone import Micphone
 
 class AudioRecorder(EventDispatcher):
 	fs = NumericProperty(None)
 	filename = StringProperty(None)
-	voice_src = OjbectProperty(None)
+	voice_src = ObjectProperty(None)
 	def __init__(self, **kw):
 		super(AudioRecorder, self).__init__(**kw)
 		self.saving = False

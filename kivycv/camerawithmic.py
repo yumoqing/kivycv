@@ -6,7 +6,7 @@ from kivy.uix.camera import Camera
 from kivy.properties import NumericProperty
 from kivy.event import EventDispatcher
 
-from .android_rotation import *
+from kivyblocks.android_rotation import *
 
 if kivy.platform in [ 'win', 'linux', 'macosx' ]:
 	from PIL import ImageGrab

@@ -16,6 +16,7 @@ class Audio(AppLogger, pyaudio.PyAudio):
 		self.chunk = 1024
 		self.devices = [ self.get_device_info_by_index(i) \
 								for i in range(self.get_device_count()) ]
+		self.recording = False
 
 	def get_input_device(self):
 		return [ d for d in self.devices if d.maxInputChannels > 0 ]
@@ -27,24 +28,16 @@ class Audio(AppLogger, pyaudio.PyAudio):
 		x = tempfile.mkstemp(suffix='.wav')
 		os.close(x[0])
 		self.temp_filename = x[1]
+		return self.temp_filename
 
 	def record_cb(self, in_data, frame_count, time_info, status):
-		bdata = pickle.dumps(in_data)
-		self.info('frame_count=%s, time_info=%s, status=%s, bytes count=%s', \
-						frame_count, time_info, status, len(bdata))
-		self.rec_frames += frame_count
-		self.current_ts = time.time()
 		self.wavfile.writeframesraw(in_data)
-		if self.running:
+		if self.recording:
 			return (None, pyaudio.paContinue)
-
 		return (None, pyaudio.paComplete)
 
 	def replay_cb(self, in_data, frame_count, time_info, status):
 		data = self.wavfile.readframes(frame_count)
-		bdata = pickle.dumps(data)
-		self.info('frame_count=%s, data length in bytes=%s', \
-						frame_count, len(bdata))
 		if not data:
 			return (None, pyaudio.paComplete)
 
@@ -57,35 +50,42 @@ class Audio(AppLogger, pyaudio.PyAudio):
 			print(x)
 		return dev_cnt - 1
 
-	def record(self, save_file=None, stop_cond_func=None):
-		filename = save_file
-		if filename is None:
-			self.tmpfile()
-			filename = self.temp_filename
-
-		self.wavfile = wave.open(filename, 'wb')
-		self.wavfile.setnchannels(2)
-		self.wavfile.setsampwidth(2)
-		self.wavfile.setframerate(44100.00)
-		self.stream = self.open(format=pyaudio.paInt16,
+	def start_record(self, 
+						savefile=None, 
 						channels=2,
-						rate=44100,
+						rate=44100
+		):
+		if savefile is None:
+			savefile = self.tmpfile()
+		self.save_file = savefile
+		self.wavfile = wave.open(self.save_file, 'wb')
+		self.wavfile.setnchannels(channels)
+		self.wavfile.setsampwidth(2)
+		self.wavfile.setframerate(rate)
+		self.stream = self.open(format=pyaudio.paInt16,
+						channels=channels,
+						rate=rate,
 						input=True,
 						frames_per_buffer=self.chunk,
 						stream_callback=self.record_cb)
 		self.stream.start_stream()
-		self.running = True
-		self.rec_frames = 0
-		self.start_ts = self.current_ts = time.time()
-		while self.stream.is_active():
-			if stop_cond_func and stop_cond_func():
-				self.running = False
-			time.sleep(0.05)
-		self.stream.stop_stream()
-		self.stream.close()
-		self.wavfile.close()
-		if save_file is None:
-			self.replay()
+		self.recording = True
+
+	def stop_record(self):
+		if self.recording:
+			self.stream.stop_stream()
+			self.stream.close()
+			self.wavfile.close()
+
+	def record(self, stop_cb,
+						savefile=None, 
+						channels=2,
+						rate=44100,
+		):
+		self.start_record(savefile=savefile, channels=channels,rate=rate)
+		while  not stop_cb():
+			time.sleep(0.1)
+		self.stop_record()
 
 	def replay(self, play_file=None):
 		idx = self.get_output_index()
@@ -118,9 +118,12 @@ class Audio(AppLogger, pyaudio.PyAudio):
 
 if __name__ == '__main__':
 	import sys
+	t_begin = time.time()
 	def stop_func(audio):
-		if audio.current_ts - audio.start_ts >= 10:
-			audio.running = False
+		t = time.time()
+		if t - t_begin >= 10:
+			return True
+		return False
 
 	create_logger('audio', levelname='debug')
 	a = Audio()
@@ -135,4 +138,4 @@ if __name__ == '__main__':
 		if len(sys.argv) >= 2:
 			sf = sys.argv[1]
 		f = partial(stop_func, a)
-		a.record(sf, stop_cond_func=f)
+		a.record(f, savefile=sf)
