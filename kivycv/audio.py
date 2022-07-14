@@ -50,6 +50,14 @@ class Audio(AppLogger, pyaudio.PyAudio):
 			print(x)
 		return dev_cnt - 1
 
+	def write_audiofile(self, fn, audio_data, channels=2, rate=44100):
+		wf = wave.open(fn, 'wb')
+		wf.setnchannels(channels)
+		wf.setsampwidth(2)
+		wf.setframerate(rate)
+		wf.writeframesraw(audio_data)
+		wf.close()
+
 	def start_record(self, 
 						savefile=None, 
 						channels=2,
@@ -73,6 +81,7 @@ class Audio(AppLogger, pyaudio.PyAudio):
 
 	def stop_record(self):
 		if self.recording:
+			self.recording = False
 			self.stream.stop_stream()
 			self.stream.close()
 			self.wavfile.close()
@@ -87,17 +96,28 @@ class Audio(AppLogger, pyaudio.PyAudio):
 			time.sleep(0.1)
 		self.stop_record()
 
+	def get_audio_spec(self, audiofile):
+		wavfile = wave.open(audiofile, 'rb')
+		sampwidth = wavfile.getsampwidth()
+		format = self.get_format_from_width(sampwidth)
+		framerate=wavfile.getframerate()
+		channels = wavfile.getnchannels()
+		return {
+			"format":format,
+			"sampwidth":sampwidth,
+			"framerate":framerate,
+			"channels":channels
+		}
+		
 	def replay(self, play_file=None):
 		idx = self.get_output_index()
 		x = self.get_device_info_by_index(idx)
 		y = self.get_default_input_device_info()
-		self.info('default_input=%s, default_output=%s', y, x)
 		if play_file is None:
 			play_file = self.temp_filename
 		self.wavfile = wave.open(play_file, 'rb')
 		format = self.get_format_from_width(self.wavfile.getsampwidth())
 		framerate=self.wavfile.getframerate()
-		self.info('format=%s, framerate=%s', format, framerate)
 		self.stream = self.open(format=format,
 						channels=self.wavfile.getnchannels(),
 						rate=framerate,
@@ -111,10 +131,6 @@ class Audio(AppLogger, pyaudio.PyAudio):
 		self.stream.stop_stream()
 		self.stream.close()
 		self.wavfile.close()
-
-	def __del__(self):
-		if self.temp_filename:
-			os.remove(self.temp_filename)
 
 if __name__ == '__main__':
 	import sys
