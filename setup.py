@@ -6,11 +6,6 @@ try:
 except ImportError:
 	from distutils.core import setup
 
-# usage:
-# python setup.py bdist_wininst generate a window executable file
-# python setup.py bdist_egg generate a egg file
-# Release information about eway
-
 description = "kivy opencv related modules"
 author = "yumoqing"
 email = "yumoqing@icloud.com"
@@ -22,8 +17,12 @@ with codecs.open('./requirements.txt', 'r', 'utf-8') as f:
 	depandent_packages = b.split('\n')
 
 package_data = {
-	"":[
-		"*.txt"
+	"kivycv":[
+		"*.txt",
+		'xcamera/data/*.ttf',
+		'xcamera/data/*.wav',
+		'xcamera/xcamera.kv',
+		'image_processing/cascades/*.xml'
 	]
 }
 
@@ -39,7 +38,11 @@ setup(
     author_email=email,
    
     install_requires=depandent_packages,
-    packages=[ 'kivycv' ],
+    packages=[ 
+		'kivycv',
+		'kivycv.xcamera',
+		'kivycv.image_processing'
+	],
     package_data=package_data,
     keywords = [
     ],
